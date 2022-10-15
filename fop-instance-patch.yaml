@@ -41,11 +41,11 @@ class MergeYaml:
             if cm["name"] == cm_s["name"]:
               for var in cm_s["literals"]:
                 env_name = var.split("=")[0]
-                env_value = var.split("=")[1]
+                env_value = var.split("=", 1)[1]
                 j = 0
                 for var_i in cm["literals"]:
                   env_i_name = var_i.split("=")[0]
-                  env_i_value = var_i.split("=")[1]
+                  env_i_value = var_i.split("=", 1)[1]
                   if env_i_name == env_name:
                     if env_i_value != env_value:
                       # reset value
