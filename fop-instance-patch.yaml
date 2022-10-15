@@ -57,13 +57,13 @@ class MergeYaml:
 
   def __set_image_registry(self):
     i = 0
-    for img in self.instance_kustomization["images"]:
-      self.instance_kustomization["images"][i]["newName"] = self.instance_kustomization["images"][i]["newName"].replace("omega.docker.release.finnova.ch","finnova-omega-docker-remote.bin.swisscom.com")
-      i = i + 1
+    if "images" in self.instance_kustomization:
+      for img in self.instance_kustomization["images"]:
+        self.instance_kustomization["images"][i]["newName"] = self.instance_kustomization["images"][i]["newName"].replace("omega.docker.release.finnova.ch","finnova-omega-docker-remote.bin.swisscom.com")
+        i = i + 1
 
   def print(self):
     yaml = YAML()
-    #print(yaml.dump(self.instance_kustomization, default_flow_style=False, sort_keys=False))
     yaml.dump(self.instance_kustomization, sys.stdout)
   
 def main(opts):
