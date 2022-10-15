@@ -1,0 +1,88 @@
+import sys
+from ruamel.yaml import YAML
+from optparse import OptionParser
+
+class Util:
+  def yaml_loader(self, filename):
+    with(open(filename) as file):
+      yaml = YAML()
+      content = yaml.load(file)
+    return content
+
+class MergeYaml:
+
+  def __init__(self, f_kustomization, f_stage_config):
+    util = Util()
+    self.stage_config = util.yaml_loader(f_stage_config)
+    self.instance_kustomization = util.yaml_loader(f_kustomization)
+
+  def merge(self):
+    self.__merge_list("resources")
+    self.__merge_list("components")
+    self.__merge_list("patchesStrategicMerge")
+    self.__merge_configMapGenerator()
+    self.__set_image_registry()
+
+  def __merge_list(self, label):
+    if label in self.stage_config: 
+      if label in self.instance_kustomization:
+        for r in self.stage_config[label]:
+          if not r in self.instance_kustomization[label]:
+            self.instance_kustomization[label].append(r)
+      else:
+        self.instance_kustomization[label] = self.stage_config[label]
+
+  def __merge_configMapGenerator(self):
+    if "configMapGenerator" in self.stage_config:
+      if "configMapGenerator" in self.instance_kustomization:
+        i = 0
+        for cm in self.instance_kustomization["configMapGenerator"]:
+          for cm_s in self.stage_config["configMapGenerator"]:
+            if cm["name"] == cm_s["name"]:
+              for var in cm_s["literals"]:
+                env_name = var.split("=")[0]
+                env_value = var.split("=")[1]
+                j = 0
+                for var_i in cm["literals"]:
+                  env_i_name = var_i.split("=")[0]
+                  env_i_value = var_i.split("=")[1]
+                  if env_i_name == env_name:
+                    if env_i_value != env_value:
+                      # reset value
+                      self.instance_kustomization["configMapGenerator"][i]["literals"][j] = "%s=%s" % (env_name,env_value)
+                  j = j+1
+            i = i+1
+      else:
+        self.instance_kustomization["configMapGenerator"] = self.stage_config["configMapGenerator"]
+
+  def __set_image_registry(self):
+    i = 0
+    for img in self.instance_kustomization["images"]:
+      self.instance_kustomization["images"][i]["newName"] = self.instance_kustomization["images"][i]["newName"].replace("omega.docker.release.finnova.ch","finnova-omega-docker-remote.bin.swisscom.com")
+      i = i + 1
+
+  def print(self):
+    yaml = YAML()
+    #print(yaml.dump(self.instance_kustomization, default_flow_style=False, sort_keys=False))
+    yaml.dump(self.instance_kustomization, sys.stdout)
+  
+def main(opts):
+  mergeYaml = MergeYaml(opts.f_kustomization, opts.f_stage_config)
+  mergeYaml.merge()
+  mergeYaml.print()
+
+if __name__ == "__main__":
+  cmd_parser = OptionParser()
+  cmd_parser.add_option("-i", "--instance-kustomization", dest="f_kustomization", metavar="<instance/kustomization.yaml>", help="instance/kustomization.yaml")
+  cmd_parser.add_option("-s", "--stage-config-yaml", dest="f_stage_config", metavar="<stage config yaml>", help="fix content to be patched to instance/kustomization.yaml")
+  (opts, args) = cmd_parser.parse_args()
+
+  # check mandatory options
+  mandatories = ['f_kustomization','f_stage_config']
+  for m in mandatories:
+    if not opts.__dict__[m]:
+      sys.stderr.write("ERROR: mandatory option is missing\n")
+      cmd_parser.print_help()
+      sys.exit(-1)
+  main(opts)
+  sys.exit(0)

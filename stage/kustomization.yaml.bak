@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: # kpt-set: ${resources}
+- ./addons/sealed-secrets
+- ./addons/static-route
+- ./addons/service-monitor
+- ../upstream
+#  - ../upstream/secrets
+components: # kpt-set: ${addons}
+- ../upstream/addons/backup # uncomment to enable db backup jobs
+- ../upstream/addons/secrets/internal-ca # Enable this optional feature if you use your own certificate authority (CA).
+- ../upstream/addons/secrets/f-sso-certificates # Enable this optional feature if you need additional certificates e.g. to access ADFS, LDAPS.
+patchesStrategicMerge: # kpt-set: ${addons}
+- ./patches/f-sso-deploy-patch.yaml
+- ./patches/f-sso-cirp-deploy-patch.yaml
+- ./patches/f-sso-db-deploy-patch.yaml
+configMapGenerator:
+- name: f-sso-base-env
+  behavior: merge
+  literals:
+  - TRUSTED_CLIENTS=6300:sif-gateway,6300:fin
+  # Loglevel for keycloak. Possible values are ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN 
+  - KEYCLOAK_LOGLEVEL=INFO
+  # Loglevel for the application server. Possible values: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+  - ROOT_LOGLEVEL=INFO
+  # Loglevel for the finnova plugins. Possible values: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+  - FINNOVA_LOGLEVEL=INFO
+  - APPLICATION_LOGLEVEL=INFO
+images:
+- name: omega.docker.release.finnova.ch/f-sso/f-sso-db
+  newName: finnova-omega-docker-remote.bin.swisscom.com/f-sso/f-sso-db # kpt-set: ${registry}/${imageNamespace}/f-sso-db
+- name: omega.docker.release.finnova.ch/f-sso/f-sso
+  newName: finnova-omega-docker-remote.bin.swisscom.com/f-sso/f-sso # kpt-set: ${registry}/${imageNamespace}/f-sso
+- name: omega.docker.release.finnova.ch/f-sso/f-sso-cirp
+  newName: finnova-omega-docker-remote.bin.swisscom.com/f-sso/f-sso-cirp # kpt-set: ${registry}/${imageNamespace}/f-sso-cirp
+- name: omega.docker.release.finnova.ch/sts/sts-postgres-prometheus-exporter
+  newName: finnova-omega-docker-remote.bin.swisscom.com/sts/sts-postgres-prometheus-exporter # kpt-set: ${registry}/${imageNamespaceSts}/sts-postgres-prometheus-exporter
+- name: omega.docker.release.finnova.ch/sts/sts-wait-for
+  newName: finnova-omega-docker-remote.bin.swisscom.com/sts/sts-wait-for # kpt-set: ${registry}/${imageNamespaceSts}/sts-wait-for

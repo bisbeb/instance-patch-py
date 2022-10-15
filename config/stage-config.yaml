@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ./addons/sealed-secrets
+- ./addons/static-route
+- ./addons/service-monitor
+- ../upstream
+components:
+- ../upstream/addons/backup
+- ../upstream/addons/secrets/internal-ca
+- ../upstream/addons/secrets/f-sso-certificates
+patchesStrategicMerge:
+- ./patches/f-sso-deploy-patch.yaml
+- ./patches/f-sso-cirp-deploy-patch.yaml
+- ./patches/f-sso-db-deploy-patch.yaml
+configMapGenerator:
+- name: f-sso-base-env
+  behavior: merge
+  literals:
+  - TRUSTED_CLIENTS=6300:sif-gateway,6300:bpf
+  - KEYCLOAK_LOGLEVEL=INFO
+  - ROOT_LOGLEVEL=DEBUG
+  - FINNOVA_LOGLEVEL=INFO
